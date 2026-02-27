@@ -6,6 +6,8 @@ dist/
 build/
 .build/
 cdk.out/
+cdk.context.json
+*.tsbuildinfo
 
 # Environment
 .env

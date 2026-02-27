@@ -1,0 +1,19 @@
+{
+  "name": "claude-dialog-infra",
+  "version": "1.0.0",
+  "description": "AWS CDK infrastructure for Claude Dialog",
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2",
+    "constructs": "^10"
+  },
+  "devDependencies": {
+    "typescript": "~5.6",
+    "ts-node": "^10",
+    "@types/node": "^22",
+    "aws-cdk": "^2"
+  }
+}
