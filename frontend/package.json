@@ -1,0 +1,24 @@
+{
+  "name": "claude-dialog-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "generate:api-client": "openapi-generator-cli generate -i ../backend/openapi.yml -g typescript-fetch -o src/api-client --additional-properties=typescriptThreePlus=true,supportsES6=true"
+  },
+  "dependencies": {
+    "marked": "^17.0.3",
+    "pinia": "^2",
+    "vue": "^3.5",
+    "vue-router": "^4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5",
+    "typescript": "^5.7",
+    "vite": "^6",
+    "vue-tsc": "^2"
+  }
+}

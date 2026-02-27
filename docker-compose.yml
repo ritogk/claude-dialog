@@ -1,0 +1,85 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_TARGET=http://backend:4000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - PORT=4000
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMODB_TABLE_NAME=claude-dialog
+      - AWS_REGION=ap-northeast-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+    depends_on:
+      dynamodb-setup:
+        condition: service_completed_successfully
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+
+  dynamodb-setup:
+    image: amazon/aws-cli:latest
+    depends_on:
+      - dynamodb-local
+    environment:
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=ap-northeast-1
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        until aws dynamodb list-tables --endpoint-url http://dynamodb-local:8000 > /dev/null 2>&1; do
+          sleep 1
+        done
+        aws dynamodb create-table \
+          --endpoint-url http://dynamodb-local:8000 \
+          --table-name claude-dialog \
+          --attribute-definitions \
+            AttributeName=PK,AttributeType=S \
+            AttributeName=SK,AttributeType=S \
+            AttributeName=GSI1PK,AttributeType=S \
+            AttributeName=GSI1SK,AttributeType=S \
+          --key-schema \
+            AttributeName=PK,KeyType=HASH \
+            AttributeName=SK,KeyType=RANGE \
+          --global-secondary-indexes \
+            '[{"IndexName":"GSI1","KeySchema":[{"AttributeName":"GSI1PK","KeyType":"HASH"},{"AttributeName":"GSI1SK","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"},"ProvisionedThroughput":{"ReadCapacityUnits":5,"WriteCapacityUnits":5}}]' \
+          --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
+        || true
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:latest
+    ports:
+      - "8001:8001"
+    environment:
+      - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=ap-northeast-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+    depends_on:
+      - dynamodb-local
