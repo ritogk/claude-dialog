@@ -11,12 +11,20 @@ export class ClaudeService {
     this.client = new Anthropic({ apiKey });
   }
 
+  private readonly systemPrompt = `あなたは知識豊富で親切な日本語AIアシスタントです。
+ユーザーとの会話は音声入力・音声読み上げで行われるため、以下を心がけてください：
+- 自然で分かりやすい日本語で回答する
+- 質問に対して正確で深みのある回答を提供する
+- 必要に応じて具体例や補足説明を加える
+- 音声で聞き取りやすいよう、簡潔かつ明瞭な表現を使う`;
+
   async *streamChat(
     messages: Array<{ role: string; content: string }>,
   ): AsyncIterable<string> {
     const stream = this.client.messages.stream({
-      model: 'claude-opus-4-5-20251101',
-      max_tokens: 4096,
+      model: 'claude-opus-4-6',
+      max_tokens: 8096,
+      system: this.systemPrompt,
       messages: messages as Anthropic.MessageParam[],
       tools: [
         {
