@@ -27,7 +27,7 @@ export class ClaudeDialogStack extends cdk.Stack {
 
     new Distribution(this, 'Distribution', {
       siteBucket: frontend.siteBucket,
-      httpApi: api.httpApi,
+      functionUrl: api.functionUrl,
       domainName,
       hostedZoneName,
     });

@@ -1,7 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
-import * as apigatewayv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as path from 'path';
 import { Construct } from 'constructs';
@@ -13,8 +11,7 @@ export interface ApiProps {
 }
 
 export class Api extends Construct {
-  public readonly httpApi: apigatewayv2.HttpApi;
-  public readonly apiEndpoint: string;
+  public readonly functionUrl: lambda.FunctionUrl;
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
@@ -35,13 +32,13 @@ export class Api extends Construct {
               'cp -r /asset-input/dist /asset-output/dist',
               'cp /asset-input/package.json /asset-output/',
               'cd /asset-output',
-              'npm install --omit=dev --no-package-lock',
+              'npm install --omit=dev --no-package-lock --legacy-peer-deps',
             ].join(' && '),
           ],
         },
       }),
       memorySize: 512,
-      timeout: cdk.Duration.seconds(60),
+      timeout: cdk.Duration.seconds(120),
       environment: {
         DYNAMODB_TABLE_NAME: props.table.tableName,
         ANTHROPIC_API_KEY: props.anthropicApiKey,
@@ -52,32 +49,15 @@ export class Api extends Construct {
 
     props.table.grantReadWriteData(handler);
 
-    const integration = new apigatewayv2Integrations.HttpLambdaIntegration(
-      'LambdaIntegration',
-      handler,
-    );
-
-    this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
-      apiName: 'claude-dialog-api',
-      corsPreflight: {
-        allowOrigins: ['*'],
-        allowMethods: [
-          apigatewayv2.CorsHttpMethod.GET,
-          apigatewayv2.CorsHttpMethod.POST,
-          apigatewayv2.CorsHttpMethod.DELETE,
-          apigatewayv2.CorsHttpMethod.OPTIONS,
-        ],
-        allowHeaders: ['Content-Type', 'X-API-Key'],
+    this.functionUrl = handler.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      invokeMode: lambda.InvokeMode.RESPONSE_STREAM,
+      cors: {
+        allowedOrigins: ['*'],
+        allowedMethods: [lambda.HttpMethod.ALL],
+        allowedHeaders: ['Content-Type', 'X-API-Key'],
         maxAge: cdk.Duration.hours(1),
       },
     });
-
-    this.httpApi.addRoutes({
-      path: '/api/{proxy+}',
-      methods: [apigatewayv2.HttpMethod.ANY],
-      integration,
-    });
-
-    this.apiEndpoint = this.httpApi.apiEndpoint;
   }
 }

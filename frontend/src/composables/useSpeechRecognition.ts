@@ -16,6 +16,10 @@ export function useSpeechRecognition() {
   const interimTranscript = ref('')
   const isSupported = ref(false)
 
+  // When muted, recognition stays active but results are ignored.
+  // This avoids stop/start cycles that trigger repeated permission popups on mobile.
+  const muted = ref(false)
+
   let recognition: any = null
 
   const SpeechRecognitionAPI =
@@ -30,6 +34,8 @@ export function useSpeechRecognition() {
     recognition.interimResults = true
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      if (muted.value) return
+
       let finalText = ''
       let interimText = ''
 
@@ -50,7 +56,7 @@ export function useSpeechRecognition() {
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message)
-      if (event.error !== 'no-speech') {
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
         isListening.value = false
       }
     }
@@ -58,12 +64,17 @@ export function useSpeechRecognition() {
     recognition.onend = () => {
       if (isListening.value) {
         // Restart if we're still supposed to be listening
-        // (recognition can stop automatically)
-        try {
-          recognition.start()
-        } catch {
-          isListening.value = false
-        }
+        // (mobile browsers end recognition automatically).
+        // Use a small delay to avoid rapid restart loops.
+        setTimeout(() => {
+          if (isListening.value) {
+            try {
+              recognition.start()
+            } catch {
+              isListening.value = false
+            }
+          }
+        }, 100)
       }
     }
   }
@@ -72,6 +83,7 @@ export function useSpeechRecognition() {
     if (!recognition || isListening.value) return
     transcript.value = ''
     interimTranscript.value = ''
+    muted.value = false
     try {
       recognition.start()
       isListening.value = true
@@ -83,12 +95,29 @@ export function useSpeechRecognition() {
   function stop() {
     if (!recognition || !isListening.value) return
     isListening.value = false
+    muted.value = false
     interimTranscript.value = ''
     try {
       recognition.stop()
     } catch (error) {
       console.error('Failed to stop speech recognition:', error)
     }
+  }
+
+  /** Temporarily ignore results without stopping the microphone session */
+  function mute() {
+    if (!recognition) return
+    muted.value = true
+    transcript.value = ''
+    interimTranscript.value = ''
+  }
+
+  /** Resume processing results (resets transcript) */
+  function unmute() {
+    if (!recognition) return
+    muted.value = false
+    transcript.value = ''
+    interimTranscript.value = ''
   }
 
   onUnmounted(() => {
@@ -109,5 +138,7 @@ export function useSpeechRecognition() {
     isSupported,
     start,
     stop,
+    mute,
+    unmute,
   }
 }

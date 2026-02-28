@@ -30,7 +30,7 @@ claude-dialog/
 
 ### 前提条件
 
-- Node.js 20+
+- Node.js 22+
 - Docker (DynamoDB Local 用)
 - Anthropic API Key
 
@@ -112,14 +112,58 @@ docker-compose up
 
 ## デプロイ (AWS CDK)
 
-```bash
-# ビルド
-npm run build:frontend
-npm run build:backend
+### 前提条件
 
-# デプロイ
-cd infra
-ANTHROPIC_API_KEY=<your-key> API_KEY=<your-api-key> npx cdk deploy
+- AWS CLI (認証設定済み)
+- Docker (CDK バンドリング用)
+
+### 環境変数
+
+ルートの `.env` に設定 (CDK デプロイ時に自動読み込み):
+
+```bash
+cp .env.example .env
+# .env を編集
 ```
 
-カスタムドメイン: `claude-dialog.homisoftware.net` (`cdk.json` で設定)
+| 変数 | 説明 |
+|---|---|
+| `ANTHROPIC_API_KEY` | [Anthropic Console](https://console.anthropic.com/) で取得した API キー |
+| `API_KEY` | アプリの API 認証キー (任意の文字列。未設定で認証スキップ) |
+
+### デプロイ手順
+
+```bash
+# 初回のみ: CDK ブートストラップ
+cd infra && npx cdk bootstrap
+
+# ビルド & デプロイ
+npm run build:frontend
+npm run build:backend
+cd infra && npx cdk deploy
+```
+
+### CDK 設定
+
+`infra/cdk.json` でドメイン名を設定:
+
+```json
+{
+  "context": {
+    "domainName": "claude-dialog.homisoftware.net",
+    "hostedZoneName": "homisoftware.net"
+  }
+}
+```
+
+### アーキテクチャ
+
+```
+CloudFront ─┬─ S3 (フロントエンド)
+            └─ Lambda Function URL (API, RESPONSE_STREAM)
+                ├─ DynamoDB (会話・メッセージ)
+                └─ Anthropic API (Claude)
+```
+
+- 通常 API: serverless-express でバッファ応答
+- SSE エンドポイント: Lambda responseStream に直接書き込み (リアルタイムストリーミング)

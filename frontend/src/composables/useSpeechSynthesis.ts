@@ -25,6 +25,22 @@ export function useSpeechSynthesis() {
   }
 
   let currentRate = 1.0
+  let unlocked = false
+
+  /**
+   * Mobile browsers require speechSynthesis.speak() to be called
+   * within a user gesture context at least once before it works
+   * from non-gesture contexts (e.g. timers, watch callbacks).
+   * Call this from a click/tap handler to unlock.
+   */
+  function unlock() {
+    if (!isSupported.value || unlocked) return
+    const utterance = new SpeechSynthesisUtterance('')
+    utterance.volume = 0
+    utterance.lang = 'ja-JP'
+    speechSynthesis.speak(utterance)
+    unlocked = true
+  }
 
   function speakUtterance(text: string) {
     const utterance = new SpeechSynthesisUtterance(text)
@@ -102,5 +118,6 @@ export function useSpeechSynthesis() {
     speak,
     enqueue,
     stop,
+    unlock,
   }
 }

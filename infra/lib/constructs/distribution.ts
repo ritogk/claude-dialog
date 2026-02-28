@@ -5,12 +5,12 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 export interface DistributionProps {
   siteBucket: s3.Bucket;
-  httpApi: apigatewayv2.HttpApi;
+  functionUrl: lambda.FunctionUrl;
   domainName: string;
   hostedZoneName: string;
 }
@@ -32,10 +32,10 @@ export class Distribution extends Construct {
       region: 'us-east-1',
     });
 
-    // Extract API Gateway domain from the endpoint URL
+    // Extract domain from Function URL (https://<domain>/)
     const apiDomain = cdk.Fn.select(
       2,
-      cdk.Fn.split('/', props.httpApi.apiEndpoint),
+      cdk.Fn.split('/', props.functionUrl.url),
     );
 
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
