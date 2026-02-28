@@ -11,6 +11,7 @@ import { Construct } from 'constructs';
 export interface DistributionProps {
   siteBucket: s3.Bucket;
   functionUrl: lambda.FunctionUrl;
+  voicevoxFunctionUrl: lambda.FunctionUrl;
   domainName: string;
   hostedZoneName: string;
 }
@@ -38,6 +39,11 @@ export class Distribution extends Construct {
       cdk.Fn.split('/', props.functionUrl.url),
     );
 
+    const voicevoxDomain = cdk.Fn.select(
+      2,
+      cdk.Fn.split('/', props.voicevoxFunctionUrl.url),
+    );
+
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       domainNames: [props.domainName],
       certificate,
@@ -50,6 +56,15 @@ export class Distribution extends Construct {
       additionalBehaviors: {
         '/api/*': {
           origin: new origins.HttpOrigin(apiDomain, {
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        },
+        '/voicevox/*': {
+          origin: new origins.HttpOrigin(voicevoxDomain, {
             protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
           }),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

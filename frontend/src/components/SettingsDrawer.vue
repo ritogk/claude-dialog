@@ -71,6 +71,74 @@
               </div>
             </div>
 
+            <!-- TTS Engine Selection -->
+            <div class="drawer__section">
+              <label class="drawer__label">音声エンジン</label>
+              <div class="drawer__radio-group">
+                <label class="drawer__radio-label">
+                  <input
+                    type="radio"
+                    v-model="voiceStore.ttsEngine"
+                    value="browser"
+                    class="drawer__radio"
+                  />
+                  ブラウザ音声
+                </label>
+                <label class="drawer__radio-label">
+                  <input
+                    type="radio"
+                    v-model="voiceStore.ttsEngine"
+                    value="voicevox"
+                    class="drawer__radio"
+                  />
+                  VOICEVOX
+                </label>
+              </div>
+            </div>
+
+            <!-- VOICEVOX Speaker Selection -->
+            <div v-if="voiceStore.ttsEngine === 'voicevox'" class="drawer__section">
+              <label class="drawer__label" for="voicevox-speaker">
+                VOICEVOX キャラクター
+              </label>
+              <div v-if="voiceStore.voicevoxLoading" class="drawer__loading-text">
+                読み込み中...
+              </div>
+              <div v-else-if="voiceStore.voicevoxError" class="drawer__error-text">
+                <p>{{ voiceStore.voicevoxError }}</p>
+                <button class="drawer__retry-btn" @click="voiceStore.loadVoicevoxSpeakers()">
+                  再試行
+                </button>
+              </div>
+              <select
+                v-else
+                id="voicevox-speaker"
+                v-model.number="voiceStore.voicevoxSpeakerId"
+                class="drawer__select"
+                :disabled="voiceStore.voicevoxSpeakers.length === 0"
+              >
+                <option
+                  v-if="voiceStore.voicevoxSpeakers.length === 0"
+                  :value="0"
+                  disabled
+                >
+                  スピーカーが見つかりません
+                </option>
+                <template
+                  v-for="speaker in voiceStore.voicevoxSpeakers"
+                  :key="speaker.speaker_uuid"
+                >
+                  <option
+                    v-for="style in speaker.styles"
+                    :key="style.id"
+                    :value="style.id"
+                  >
+                    {{ speaker.name }} ({{ style.name }})
+                  </option>
+                </template>
+              </select>
+            </div>
+
             <!-- TTS Rate -->
             <div class="drawer__section">
               <label class="drawer__label" for="tts-rate">
@@ -111,8 +179,8 @@
               </div>
             </div>
 
-            <!-- Voice Selection -->
-            <div class="drawer__section">
+            <!-- Voice Selection (browser only) -->
+            <div v-if="voiceStore.ttsEngine === 'browser'" class="drawer__section">
               <label class="drawer__label" for="voice-select">
                 音声の選択
               </label>
@@ -176,6 +244,17 @@ watch(
   (val) => {
     selectedVoiceName.value = val
   },
+)
+
+// Lazy-load VOICEVOX speakers when engine is switched
+watch(
+  () => voiceStore.ttsEngine,
+  (engine) => {
+    if (engine === 'voicevox' && voiceStore.voicevoxSpeakers.length === 0) {
+      voiceStore.loadVoicevoxSpeakers()
+    }
+  },
+  { immediate: true },
 )
 
 function saveApiKey() {
@@ -429,6 +508,54 @@ function saveApiKey() {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+.drawer__radio-group {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.drawer__radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.drawer__radio {
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.drawer__loading-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding: var(--spacing-sm) 0;
+}
+
+.drawer__error-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+}
+
+.drawer__error-text p {
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.drawer__retry-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  min-height: 36px;
 }
 
 /* Drawer transitions */

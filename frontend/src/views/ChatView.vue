@@ -62,6 +62,7 @@ import { useConversationStore } from '../stores/conversation'
 import { useVoiceStore } from '../stores/voice'
 import { useSpeechRecognition } from '../composables/useSpeechRecognition'
 import { useSpeechSynthesis } from '../composables/useSpeechSynthesis'
+import { useVoicevoxSynthesis } from '../composables/useVoicevoxSynthesis'
 import { useStreamingChat } from '../composables/useStreamingChat'
 import { stripMarkdown } from '../utils/stripMarkdown'
 import AppHeader from '../components/AppHeader.vue'
@@ -75,8 +76,13 @@ const conversationStore = useConversationStore()
 const voiceStore = useVoiceStore()
 
 const speechRecognition = useSpeechRecognition()
-const speechSynthesis = useSpeechSynthesis()
+const browserSynthesis = useSpeechSynthesis()
+const voicevoxSynthesis = useVoicevoxSynthesis()
 const streamingChat = useStreamingChat()
+
+const activeSynthesis = computed(() =>
+  voiceStore.ttsEngine === 'voicevox' ? voicevoxSynthesis : browserSynthesis,
+)
 
 const conversationId = computed(() => route.params.id as string)
 const messages = ref<Message[]>([])
@@ -99,7 +105,7 @@ const conversationTitle = computed(() => {
 
 function goBack() {
   // Stop any ongoing speech
-  speechSynthesis.stop()
+  activeSynthesis.value.stop()
   speechRecognition.stop()
   router.push('/')
 }
@@ -128,9 +134,9 @@ async function handleSend(content: string) {
   if (!content.trim() || streamingChat.isStreaming.value) return
 
   // Unlock speech synthesis on user gesture (required for mobile)
-  speechSynthesis.unlock()
+  activeSynthesis.value.unlock()
   // Stop TTS if speaking
-  speechSynthesis.stop()
+  activeSynthesis.value.stop()
   // Mute recognition during send/response (keeps mic session alive on mobile)
   speechRecognition.mute()
   clearSilenceTimer()
@@ -158,7 +164,11 @@ async function handleSend(content: string) {
     if (voiceModeActive.value && voiceStore.ttsEnabled) {
       const remaining = stripMarkdown(responseContent.slice(spokenLength)).trim()
       if (remaining) {
-        speechSynthesis.enqueue(remaining, voiceStore.selectedVoice, voiceStore.ttsRate)
+        if (voiceStore.ttsEngine === 'voicevox') {
+          voicevoxSynthesis.enqueue(remaining, voiceStore.voicevoxSpeakerId, voiceStore.ttsRate)
+        } else {
+          browserSynthesis.enqueue(remaining, voiceStore.selectedVoice, voiceStore.ttsRate)
+        }
       }
     }
 
@@ -205,9 +215,9 @@ function toggleVoice() {
   } else {
     // Turn on voice mode
     // Unlock speech synthesis on user gesture (required for mobile)
-    speechSynthesis.unlock()
+    activeSynthesis.value.unlock()
     voiceModeActive.value = true
-    speechSynthesis.stop()
+    activeSynthesis.value.stop()
     speechRecognition.start()
   }
 }
@@ -234,8 +244,8 @@ watch(
     if (!finalText && !interimText) return
 
     // Interrupt TTS if the user starts speaking
-    if (speechSynthesis.isSpeaking.value) {
-      speechSynthesis.stop()
+    if (activeSynthesis.value.isSpeaking.value) {
+      activeSynthesis.value.stop()
     }
 
     clearSilenceTimer()
@@ -276,7 +286,11 @@ watch(
       const raw = unspoken.slice(searchPos, endIdx).trim()
       const sentence = stripMarkdown(raw)
       if (sentence) {
-        speechSynthesis.enqueue(sentence, voiceStore.selectedVoice, voiceStore.ttsRate)
+        if (voiceStore.ttsEngine === 'voicevox') {
+          voicevoxSynthesis.enqueue(sentence, voiceStore.voicevoxSpeakerId, voiceStore.ttsRate)
+        } else {
+          browserSynthesis.enqueue(sentence, voiceStore.selectedVoice, voiceStore.ttsRate)
+        }
       }
       searchPos = endIdx
     }
@@ -309,7 +323,7 @@ onMounted(() => {
 onUnmounted(() => {
   voiceModeActive.value = false
   clearSilenceTimer()
-  speechSynthesis.stop()
+  activeSynthesis.value.stop()
   speechRecognition.stop()
 })
 </script>

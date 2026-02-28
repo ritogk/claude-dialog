@@ -4,6 +4,7 @@ import { Database } from './constructs/database';
 import { Api } from './constructs/api';
 import { Frontend } from './constructs/frontend';
 import { Distribution } from './constructs/distribution';
+import { Voicevox } from './constructs/voicevox';
 
 export class ClaudeDialogStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -25,9 +26,12 @@ export class ClaudeDialogStack extends cdk.Stack {
 
     const frontend = new Frontend(this, 'Frontend');
 
+    const voicevox = new Voicevox(this, 'Voicevox');
+
     new Distribution(this, 'Distribution', {
       siteBucket: frontend.siteBucket,
       functionUrl: api.functionUrl,
+      voicevoxFunctionUrl: voicevox.functionUrl,
       domainName,
       hostedZoneName,
     });

@@ -10,8 +10,10 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_TARGET=http://backend:4000
+      - VITE_VOICEVOX_TARGET=http://voicevox:50021
     depends_on:
       - backend
+      - voicevox
 
   backend:
     build:
@@ -34,6 +36,11 @@ services:
     depends_on:
       dynamodb-setup:
         condition: service_completed_successfully
+
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    ports:
+      - "50021:50021"
 
   dynamodb-local:
     image: amazon/dynamodb-local:latest
