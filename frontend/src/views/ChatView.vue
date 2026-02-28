@@ -127,10 +127,12 @@ async function loadMessages() {
 async function handleSend(content: string) {
   if (!content.trim() || streamingChat.isStreaming.value) return
 
+  // Unlock speech synthesis on user gesture (required for mobile)
+  speechSynthesis.unlock()
   // Stop TTS if speaking
   speechSynthesis.stop()
-  // Pause recognition during send/response (will resume after)
-  speechRecognition.stop()
+  // Mute recognition during send/response (keeps mic session alive on mobile)
+  speechRecognition.mute()
   clearSilenceTimer()
 
   // Add user message locally
@@ -189,9 +191,9 @@ async function handleSend(content: string) {
 
 function resumeListeningAfterTTS() {
   if (!voiceModeActive.value) return
-  // Always start listening immediately (even during TTS)
-  // so the user can interrupt by speaking
-  speechRecognition.start()
+  // Unmute recognition to resume capturing speech
+  // (mic session stays alive, no new permission popup)
+  speechRecognition.unmute()
 }
 
 function toggleVoice() {
@@ -202,6 +204,8 @@ function toggleVoice() {
     clearSilenceTimer()
   } else {
     // Turn on voice mode
+    // Unlock speech synthesis on user gesture (required for mobile)
+    speechSynthesis.unlock()
     voiceModeActive.value = true
     speechSynthesis.stop()
     speechRecognition.start()
