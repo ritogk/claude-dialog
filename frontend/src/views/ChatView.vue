@@ -299,6 +299,16 @@ watch(
   },
 )
 
+// Update conversation title when LLM generates one
+watch(
+  () => streamingChat.lastTitleUpdate.value,
+  (title) => {
+    if (title) {
+      conversationStore.updateTitle(conversationId.value, title)
+    }
+  },
+)
+
 // Update input bar with voice transcript (final + interim combined)
 watch(
   [

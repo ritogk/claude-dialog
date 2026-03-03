@@ -58,6 +58,16 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
+  function updateTitle(id: string, title: string) {
+    const conversation = conversations.value.find((c) => c.id === id)
+    if (conversation) {
+      conversation.title = title
+    }
+    if (currentConversation.value?.id === id) {
+      currentConversation.value = { ...currentConversation.value, title }
+    }
+  }
+
   return {
     conversations,
     currentConversation,
@@ -66,5 +76,6 @@ export const useConversationStore = defineStore('conversation', () => {
     createConversation,
     deleteConversation,
     setCurrentConversation,
+    updateTitle,
   }
 })

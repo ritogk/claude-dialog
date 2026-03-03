@@ -86,6 +86,28 @@ This conversation takes place through a Japanese voice chat application. The use
 </voice_conversation_context>`;
   }
 
+  async generateTitle(
+    userMessage: string,
+    assistantMessage: string,
+  ): Promise<string> {
+    const response = await this.client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 50,
+      messages: [
+        {
+          role: 'user',
+          content: `以下の会話内容から、短い日本語のチャットタイトルを1つだけ生成してください。15文字以内で、括弧や記号は不要です。タイトルのみを返してください。
+
+ユーザー: ${userMessage}
+アシスタント: ${assistantMessage.substring(0, 200)}`,
+        },
+      ],
+    });
+    const text =
+      response.content[0]?.type === 'text' ? response.content[0].text : '';
+    return text.trim().replace(/^[「『]|[」』]$/g, '');
+  }
+
   async *streamChat(
     messages: Array<{ role: string; content: string }>,
   ): AsyncIterable<string> {

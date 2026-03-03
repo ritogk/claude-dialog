@@ -62,7 +62,7 @@ export class MessageService {
   async *sendAndStream(
     conversationId: string,
     content: string,
-  ): AsyncGenerator<{ type: string; text?: string }> {
+  ): AsyncGenerator<{ type: string; text?: string; title?: string }> {
     // Verify conversation exists
     const conversation = await this.conversationService.getById(conversationId);
     if (!conversation) {
@@ -72,12 +72,9 @@ export class MessageService {
     // Save the user message
     await this.saveMessage(conversationId, 'user', content);
 
-    // Auto-generate title from first user message if title is still default
-    if (conversation.title === 'New Conversation') {
-      const title =
-        content.length > 50 ? content.substring(0, 50) + '...' : content;
-      await this.conversationService.updateTitle(conversationId, title);
-    }
+    const needsTitle =
+      conversation.title === 'New Conversation' ||
+      conversation.title === '新しい会話';
 
     // Get full conversation history for Claude
     const history = await this.getHistory(conversationId);
@@ -96,6 +93,26 @@ export class MessageService {
     // Update conversation timestamp
     const now = new Date().toISOString();
     await this.conversationService.updateTimestamp(conversationId, now);
+
+    // Auto-generate title with LLM after first exchange
+    if (needsTitle && fullResponse) {
+      try {
+        const title = await this.claudeService.generateTitle(
+          content,
+          fullResponse,
+        );
+        if (title) {
+          await this.conversationService.updateTitle(conversationId, title);
+          yield { type: 'title_update', title };
+        }
+      } catch (e) {
+        // Title generation failure is non-critical; fall back to truncated message
+        const fallback =
+          content.length > 50 ? content.substring(0, 50) + '...' : content;
+        await this.conversationService.updateTitle(conversationId, fallback);
+        yield { type: 'title_update', title: fallback };
+      }
+    }
 
     // Send final event
     yield { type: 'message_stop' };

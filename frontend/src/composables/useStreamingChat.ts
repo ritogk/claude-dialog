@@ -4,11 +4,13 @@ import { api } from '../services/api'
 export function useStreamingChat() {
   const isStreaming = ref(false)
   const streamingContent = ref('')
+  const lastTitleUpdate = ref('')
 
   async function sendMessage(
     conversationId: string,
     content: string,
   ): Promise<string> {
+    lastTitleUpdate.value = ''
     isStreaming.value = true
     streamingContent.value = ''
 
@@ -61,7 +63,9 @@ export function useStreamingChat() {
 
             try {
               const parsed = JSON.parse(data)
-              if (parsed.content) {
+              if (parsed.type === 'title_update' && parsed.title) {
+                lastTitleUpdate.value = parsed.title
+              } else if (parsed.content) {
                 fullContent += parsed.content
                 streamingContent.value = fullContent
               } else if (parsed.text) {
@@ -121,6 +125,7 @@ export function useStreamingChat() {
   return {
     isStreaming,
     streamingContent,
+    lastTitleUpdate,
     sendMessage,
   }
 }
