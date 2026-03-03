@@ -11,11 +11,6 @@ export default defineConfig({
         target: process.env.VITE_API_TARGET || 'http://localhost:4000',
         changeOrigin: true,
       },
-      '/voicevox': {
-        target: process.env.VITE_VOICEVOX_TARGET || 'http://localhost:50021',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/voicevox/, ''),
-      },
     },
   },
 })

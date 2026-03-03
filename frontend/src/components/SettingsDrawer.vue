@@ -88,54 +88,49 @@
                   <input
                     type="radio"
                     v-model="voiceStore.ttsEngine"
-                    value="voicevox"
+                    value="polly"
                     class="drawer__radio"
                   />
-                  VOICEVOX
+                  Amazon Polly
                 </label>
               </div>
             </div>
 
-            <!-- VOICEVOX Speaker Selection -->
-            <div v-if="voiceStore.ttsEngine === 'voicevox'" class="drawer__section">
-              <label class="drawer__label" for="voicevox-speaker">
-                VOICEVOX キャラクター
+            <!-- Polly Voice Selection -->
+            <div v-if="voiceStore.ttsEngine === 'polly'" class="drawer__section">
+              <label class="drawer__label" for="polly-voice">
+                Polly 音声
               </label>
-              <div v-if="voiceStore.voicevoxLoading" class="drawer__loading-text">
+              <div v-if="voiceStore.pollyLoading" class="drawer__loading-text">
                 読み込み中...
               </div>
-              <div v-else-if="voiceStore.voicevoxError" class="drawer__error-text">
-                <p>{{ voiceStore.voicevoxError }}</p>
-                <button class="drawer__retry-btn" @click="voiceStore.loadVoicevoxSpeakers()">
+              <div v-else-if="voiceStore.pollyError" class="drawer__error-text">
+                <p>{{ voiceStore.pollyError }}</p>
+                <button class="drawer__retry-btn" @click="voiceStore.loadPollyVoices()">
                   再試行
                 </button>
               </div>
               <select
                 v-else
-                id="voicevox-speaker"
-                v-model.number="voiceStore.voicevoxSpeakerId"
+                id="polly-voice"
+                v-model="voiceStore.pollyVoiceId"
                 class="drawer__select"
-                :disabled="voiceStore.voicevoxSpeakers.length === 0"
+                :disabled="voiceStore.pollyVoices.length === 0"
               >
                 <option
-                  v-if="voiceStore.voicevoxSpeakers.length === 0"
-                  :value="0"
+                  v-if="voiceStore.pollyVoices.length === 0"
+                  value=""
                   disabled
                 >
-                  スピーカーが見つかりません
+                  音声が見つかりません
                 </option>
-                <template
-                  v-for="speaker in voiceStore.voicevoxSpeakers"
-                  :key="speaker.speaker_uuid"
+                <option
+                  v-for="voice in voiceStore.pollyVoices"
+                  :key="voice.id"
+                  :value="voice.id"
                 >
-                  <option
-                    v-for="style in speaker.styles"
-                    :key="style.id"
-                    :value="style.id"
-                  >
-                    {{ speaker.name }} ({{ style.name }})
-                  </option>
-                </template>
+                  {{ voice.name }} ({{ voice.gender }})
+                </option>
               </select>
             </div>
 
@@ -246,12 +241,12 @@ watch(
   },
 )
 
-// Lazy-load VOICEVOX speakers when engine is switched
+// Lazy-load Polly voices when engine is switched
 watch(
   () => voiceStore.ttsEngine,
   (engine) => {
-    if (engine === 'voicevox' && voiceStore.voicevoxSpeakers.length === 0) {
-      voiceStore.loadVoicevoxSpeakers()
+    if (engine === 'polly' && voiceStore.pollyVoices.length === 0) {
+      voiceStore.loadPollyVoices()
     }
   },
   { immediate: true },

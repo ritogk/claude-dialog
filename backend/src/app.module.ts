@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ClaudeModule } from './claude/claude.module';
 import { ConversationModule } from './conversation/conversation.module';
 import { MessageModule } from './message/message.module';
+import { PollyModule } from './polly/polly.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MessageModule } from './message/message.module';
     ClaudeModule,
     ConversationModule,
     MessageModule,
+    PollyModule,
   ],
   controllers: [HealthController],
 })

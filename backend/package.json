@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@aws-sdk/client-dynamodb": "^3.554.0",
+    "@aws-sdk/client-polly": "^3.554.0",
     "@aws-sdk/lib-dynamodb": "^3.554.0",
     "@codegenie/serverless-express": "^4.14.1",
     "@nestjs/common": "^10.3.8",

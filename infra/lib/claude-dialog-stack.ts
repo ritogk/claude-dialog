@@ -1,10 +1,11 @@
 import * as cdk from 'aws-cdk-lib';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as path from 'path';
 import { Construct } from 'constructs';
 import { Database } from './constructs/database';
 import { Api } from './constructs/api';
 import { Frontend } from './constructs/frontend';
 import { Distribution } from './constructs/distribution';
-import { Voicevox } from './constructs/voicevox';
 
 export class ClaudeDialogStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -26,14 +27,20 @@ export class ClaudeDialogStack extends cdk.Stack {
 
     const frontend = new Frontend(this, 'Frontend');
 
-    const voicevox = new Voicevox(this, 'Voicevox');
-
-    new Distribution(this, 'Distribution', {
+    const dist = new Distribution(this, 'Distribution', {
       siteBucket: frontend.siteBucket,
       functionUrl: api.functionUrl,
-      voicevoxFunctionUrl: voicevox.functionUrl,
       domainName,
       hostedZoneName,
+    });
+
+    new s3deploy.BucketDeployment(this, 'DeployFrontend', {
+      sources: [
+        s3deploy.Source.asset(path.join(__dirname, '..', '..', 'frontend', 'dist')),
+      ],
+      destinationBucket: frontend.siteBucket,
+      distribution: dist.distribution,
+      distributionPaths: ['/*'],
     });
   }
 }

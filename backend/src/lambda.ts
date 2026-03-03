@@ -26,7 +26,12 @@ async function bootstrap() {
     );
     cachedApp.enableCors();
     await cachedApp.init();
-    cachedServer = serverlessExpress({ app: expressApp });
+    cachedServer = serverlessExpress({
+      app: expressApp,
+      binarySettings: {
+        contentTypes: ['audio/*', 'application/octet-stream'],
+      },
+    });
   }
   return { app: cachedApp, server: cachedServer };
 }

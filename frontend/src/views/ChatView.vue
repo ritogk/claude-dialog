@@ -62,7 +62,7 @@ import { useConversationStore } from '../stores/conversation'
 import { useVoiceStore } from '../stores/voice'
 import { useSpeechRecognition } from '../composables/useSpeechRecognition'
 import { useSpeechSynthesis } from '../composables/useSpeechSynthesis'
-import { useVoicevoxSynthesis } from '../composables/useVoicevoxSynthesis'
+import { usePollySynthesis } from '../composables/usePollySynthesis'
 import { useStreamingChat } from '../composables/useStreamingChat'
 import { stripMarkdown } from '../utils/stripMarkdown'
 import AppHeader from '../components/AppHeader.vue'
@@ -77,11 +77,11 @@ const voiceStore = useVoiceStore()
 
 const speechRecognition = useSpeechRecognition()
 const browserSynthesis = useSpeechSynthesis()
-const voicevoxSynthesis = useVoicevoxSynthesis()
+const pollySynthesis = usePollySynthesis()
 const streamingChat = useStreamingChat()
 
 const activeSynthesis = computed(() =>
-  voiceStore.ttsEngine === 'voicevox' ? voicevoxSynthesis : browserSynthesis,
+  voiceStore.ttsEngine === 'polly' ? pollySynthesis : browserSynthesis,
 )
 
 const conversationId = computed(() => route.params.id as string)
@@ -164,8 +164,8 @@ async function handleSend(content: string) {
     if (voiceModeActive.value && voiceStore.ttsEnabled) {
       const remaining = stripMarkdown(responseContent.slice(spokenLength)).trim()
       if (remaining) {
-        if (voiceStore.ttsEngine === 'voicevox') {
-          voicevoxSynthesis.enqueue(remaining, voiceStore.voicevoxSpeakerId, voiceStore.ttsRate)
+        if (voiceStore.ttsEngine === 'polly') {
+          pollySynthesis.enqueue(remaining, voiceStore.pollyVoiceId, voiceStore.pollyEngine, voiceStore.ttsRate)
         } else {
           browserSynthesis.enqueue(remaining, voiceStore.selectedVoice, voiceStore.ttsRate)
         }
@@ -286,8 +286,8 @@ watch(
       const raw = unspoken.slice(searchPos, endIdx).trim()
       const sentence = stripMarkdown(raw)
       if (sentence) {
-        if (voiceStore.ttsEngine === 'voicevox') {
-          voicevoxSynthesis.enqueue(sentence, voiceStore.voicevoxSpeakerId, voiceStore.ttsRate)
+        if (voiceStore.ttsEngine === 'polly') {
+          pollySynthesis.enqueue(sentence, voiceStore.pollyVoiceId, voiceStore.pollyEngine, voiceStore.ttsRate)
         } else {
           browserSynthesis.enqueue(sentence, voiceStore.selectedVoice, voiceStore.ttsRate)
         }

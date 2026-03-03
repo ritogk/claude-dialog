@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { VoicevoxSpeaker } from '../types/voicevox'
+import type { PollyVoice } from '../types/polly'
 
 export const useVoiceStore = defineStore('voice', () => {
   const ttsEnabled = ref(
@@ -17,16 +17,20 @@ export const useVoiceStore = defineStore('voice', () => {
   )
   const availableVoices = ref<SpeechSynthesisVoice[]>([])
 
-  // VOICEVOX state
-  const ttsEngine = ref<'browser' | 'voicevox'>(
-    (localStorage.getItem('claude-dialog-tts-engine') as 'browser' | 'voicevox') || 'browser',
+  // Polly state
+  const storedEngine = localStorage.getItem('claude-dialog-tts-engine')
+  const ttsEngine = ref<'browser' | 'polly'>(
+    storedEngine === 'polly' ? 'polly' : 'browser',
   )
-  const voicevoxSpeakerId = ref(
-    parseInt(localStorage.getItem('claude-dialog-voicevox-speaker') || '0'),
+  const pollyVoiceId = ref(
+    localStorage.getItem('claude-dialog-polly-voice') || 'Takumi',
   )
-  const voicevoxSpeakers = ref<VoicevoxSpeaker[]>([])
-  const voicevoxLoading = ref(false)
-  const voicevoxError = ref('')
+  const pollyEngine = ref(
+    localStorage.getItem('claude-dialog-polly-engine') || 'neural',
+  )
+  const pollyVoices = ref<PollyVoice[]>([])
+  const pollyLoading = ref(false)
+  const pollyError = ref('')
 
   watch(ttsEnabled, (value) => {
     localStorage.setItem('claude-dialog-tts-enabled', String(value))
@@ -48,8 +52,12 @@ export const useVoiceStore = defineStore('voice', () => {
     localStorage.setItem('claude-dialog-tts-engine', value)
   })
 
-  watch(voicevoxSpeakerId, (value) => {
-    localStorage.setItem('claude-dialog-voicevox-speaker', String(value))
+  watch(pollyVoiceId, (value) => {
+    localStorage.setItem('claude-dialog-polly-voice', value)
+  })
+
+  watch(pollyEngine, (value) => {
+    localStorage.setItem('claude-dialog-polly-engine', value)
   })
 
   function toggleTts() {
@@ -60,38 +68,48 @@ export const useVoiceStore = defineStore('voice', () => {
     selectedVoice.value = name
   }
 
-  function loadVoices() {
-    if (typeof speechSynthesis === 'undefined') return
-
-    const updateVoices = () => {
+  function getVoicesAsync(): Promise<SpeechSynthesisVoice[]> {
+    return new Promise((resolve) => {
       const voices = speechSynthesis.getVoices()
-      availableVoices.value = voices.filter(
-        (v) => v.lang.startsWith('ja') || v.lang.startsWith('ja-'),
-      )
-      if (
-        availableVoices.value.length > 0 &&
-        !selectedVoice.value
-      ) {
-        selectedVoice.value = availableVoices.value[0].name
+      if (voices.length > 0) {
+        resolve(voices)
+        return
       }
-    }
-
-    updateVoices()
-    speechSynthesis.onvoiceschanged = updateVoices
+      speechSynthesis.addEventListener('voiceschanged', () => {
+        resolve(speechSynthesis.getVoices())
+      }, { once: true })
+    })
   }
 
-  async function loadVoicevoxSpeakers() {
-    if (voicevoxLoading.value) return
-    voicevoxLoading.value = true
-    voicevoxError.value = ''
+  async function loadVoices() {
+    if (typeof speechSynthesis === 'undefined') return
+
+    const voices = await getVoicesAsync()
+    const jaVoices = voices.filter(
+      (v) => v.lang === 'ja-JP' || v.lang === 'ja' || v.lang === 'ja_JP',
+    )
+
+    availableVoices.value = jaVoices
+    if (availableVoices.value.length > 0 && !selectedVoice.value) {
+      selectedVoice.value = availableVoices.value[0].name
+    }
+  }
+
+  async function loadPollyVoices() {
+    if (pollyLoading.value) return
+    pollyLoading.value = true
+    pollyError.value = ''
     try {
-      const res = await fetch('/voicevox/speakers')
-      if (!res.ok) throw new Error(`Failed to fetch speakers: ${res.status}`)
-      voicevoxSpeakers.value = await res.json()
+      const headers: HeadersInit = {}
+      const apiKey = localStorage.getItem('claude-dialog-api-key')
+      if (apiKey) headers['X-API-Key'] = apiKey
+      const res = await fetch('/api/polly/voices', { headers })
+      if (!res.ok) throw new Error(`Failed to fetch voices: ${res.status}`)
+      pollyVoices.value = await res.json()
     } catch (e: any) {
-      voicevoxError.value = e.message || 'スピーカーの取得に失敗しました'
+      pollyError.value = e.message || '音声の取得に失敗しました'
     } finally {
-      voicevoxLoading.value = false
+      pollyLoading.value = false
     }
   }
 
@@ -102,13 +120,14 @@ export const useVoiceStore = defineStore('voice', () => {
     silenceDelay,
     availableVoices,
     ttsEngine,
-    voicevoxSpeakerId,
-    voicevoxSpeakers,
-    voicevoxLoading,
-    voicevoxError,
+    pollyVoiceId,
+    pollyEngine,
+    pollyVoices,
+    pollyLoading,
+    pollyError,
     toggleTts,
     setVoice,
     loadVoices,
-    loadVoicevoxSpeakers,
+    loadPollyVoices,
   }
 })

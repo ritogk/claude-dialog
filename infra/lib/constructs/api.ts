@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as path from 'path';
 import { Construct } from 'constructs';
@@ -48,6 +49,13 @@ export class Api extends Construct {
     });
 
     props.table.grantReadWriteData(handler);
+
+    handler.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['polly:DescribeVoices', 'polly:SynthesizeSpeech'],
+        resources: ['*'],
+      }),
+    );
 
     this.functionUrl = handler.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,

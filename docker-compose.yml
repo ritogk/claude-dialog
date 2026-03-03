@@ -10,10 +10,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_TARGET=http://backend:4000
-      - VITE_VOICEVOX_TARGET=http://voicevox:50021
     depends_on:
       - backend
-      - voicevox
 
   backend:
     build:
@@ -24,6 +22,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ~/.aws:/root/.aws:ro
     env_file:
       - .env
     environment:
@@ -31,16 +30,9 @@ services:
       - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
       - DYNAMODB_TABLE_NAME=claude-dialog
       - AWS_REGION=ap-northeast-1
-      - AWS_ACCESS_KEY_ID=local
-      - AWS_SECRET_ACCESS_KEY=local
     depends_on:
       dynamodb-setup:
         condition: service_completed_successfully
-
-  voicevox:
-    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-    ports:
-      - "50021:50021"
 
   dynamodb-local:
     image: amazon/dynamodb-local:latest
