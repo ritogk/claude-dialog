@@ -63,7 +63,9 @@ export function useStreamingChat() {
 
             try {
               const parsed = JSON.parse(data)
-              if (parsed.type === 'title_update' && parsed.title) {
+              if (parsed.type === 'error') {
+                throw new Error(parsed.error || 'サーバーエラーが発生しました')
+              } else if (parsed.type === 'title_update' && parsed.title) {
                 lastTitleUpdate.value = parsed.title
               } else if (parsed.content) {
                 fullContent += parsed.content
@@ -78,7 +80,10 @@ export function useStreamingChat() {
                 fullContent += parsed
                 streamingContent.value = fullContent
               }
-            } catch {
+            } catch (e) {
+              if (e instanceof Error && e.message !== 'Unexpected end of JSON input') {
+                throw e
+              }
               // If it's not JSON, treat the raw data as text content
               if (data && data !== '[DONE]') {
                 fullContent += data
