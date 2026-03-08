@@ -16,8 +16,18 @@ export function usePollySynthesis() {
   let currentEngine = 'neural'
   let currentRate = 1.0
 
-  const audio = new Audio()
-  let currentObjectUrl: string | null = null
+  // Use AudioContext instead of Audio element to avoid killing
+  // SpeechRecognition on iOS. Audio element takes over the audio session,
+  // but AudioContext can coexist with the microphone.
+  let audioCtx: AudioContext | null = null
+  let currentSource: AudioBufferSourceNode | null = null
+
+  function getAudioContext(): AudioContext {
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    }
+    return audioCtx
+  }
 
   async function synthesize(
     text: string,
@@ -43,17 +53,31 @@ export function usePollySynthesis() {
   }
 
   function playAudio(buffer: ArrayBuffer): Promise<void> {
-    return new Promise((resolve) => {
-      if (currentObjectUrl) {
-        URL.revokeObjectURL(currentObjectUrl)
+    return new Promise(async (resolve) => {
+      try {
+        const ctx = getAudioContext()
+        // Resume context if suspended (iOS requires this after user gesture)
+        if (ctx.state === 'suspended') {
+          await ctx.resume()
+        }
+        const audioBuffer = await ctx.decodeAudioData(buffer.slice(0))
+        if (aborted) {
+          resolve()
+          return
+        }
+        const source = ctx.createBufferSource()
+        source.buffer = audioBuffer
+        source.connect(ctx.destination)
+        currentSource = source
+        source.onended = () => {
+          currentSource = null
+          resolve()
+        }
+        source.start(0)
+      } catch {
+        currentSource = null
+        resolve()
       }
-      const blob = new Blob([buffer], { type: 'audio/mpeg' })
-      currentObjectUrl = URL.createObjectURL(blob)
-
-      audio.onended = () => resolve()
-      audio.onerror = () => resolve()
-      audio.src = currentObjectUrl
-      audio.play().catch(() => resolve())
     })
   }
 
@@ -96,22 +120,48 @@ export function usePollySynthesis() {
   function stop() {
     aborted = true
     audioQueue = []
-    audio.pause()
-    audio.removeAttribute('src')
-    if (currentObjectUrl) {
-      URL.revokeObjectURL(currentObjectUrl)
-      currentObjectUrl = null
+    if (currentSource) {
+      try {
+        currentSource.stop()
+      } catch {
+        // ignore — may already be stopped
+      }
+      currentSource = null
     }
     playing = false
     isSpeaking.value = false
   }
 
   function unlock() {
-    audio.src = 'data:audio/mp3;base64,/+NIxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
-    audio.volume = 0
-    audio.play().catch(() => {})
-    audio.volume = 1
+    // Create and resume AudioContext on user gesture (required for iOS)
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
+    // Play a tiny silent buffer to fully unlock audio on iOS
+    try {
+      const silentBuffer = ctx.createBuffer(1, 1, ctx.sampleRate)
+      const source = ctx.createBufferSource()
+      source.buffer = silentBuffer
+      source.connect(ctx.destination)
+      source.start(0)
+    } catch {
+      // ignore
+    }
   }
 
-  return { isSpeaking, isSupported, speak, enqueue, stop, unlock }
+  /** Returns a promise that resolves when the queue finishes playing */
+  function waitUntilDone(): Promise<void> {
+    if (!playing) return Promise.resolve()
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (!playing) {
+          clearInterval(check)
+          resolve()
+        }
+      }, 100)
+    })
+  }
+
+  return { isSpeaking, isSupported, speak, enqueue, stop, unlock, waitUntilDone }
 }

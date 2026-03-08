@@ -1,27 +1,27 @@
 :root {
-  /* Colors */
-  --color-primary: #6c5ce7;
-  --color-primary-light: #a29bfe;
-  --color-primary-dark: #4a3db5;
+  /* Colors — Claude-inspired dark theme */
+  --color-primary: #da7756;
+  --color-primary-light: #e8a88e;
+  --color-primary-dark: #c25d3a;
 
-  --color-bg: #1a1a2e;
-  --color-bg-secondary: #16213e;
-  --color-bg-tertiary: #0f3460;
+  --color-bg: #1a1714;
+  --color-bg-secondary: #211e1a;
+  --color-bg-tertiary: #2c2823;
 
-  --color-surface: #1e2a45;
-  --color-surface-hover: #253554;
+  --color-surface: #2c2823;
+  --color-surface-hover: #3a3530;
 
-  --color-text: #eaeaea;
-  --color-text-secondary: #a0a0b8;
-  --color-text-muted: #6b6b80;
+  --color-text: #ece5d8;
+  --color-text-secondary: #b0a898;
+  --color-text-muted: #78716a;
 
-  --color-border: #2a2a4a;
+  --color-border: #3a3530;
 
-  --color-user-bubble: #6c5ce7;
-  --color-assistant-bubble: #2d2d4a;
+  --color-user-bubble: #da7756;
+  --color-assistant-bubble: #2c2823;
 
   --color-danger: #e74c3c;
-  --color-success: #2ecc71;
+  --color-success: #5fb87a;
 
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,

@@ -431,7 +431,7 @@ function saveApiKey() {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background-color: #fff;
+  background-color: var(--color-text);
   transition: transform var(--transition-fast);
 }
 

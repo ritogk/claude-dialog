@@ -131,11 +131,20 @@ const deleteTarget = ref<string | null>(null)
 
 async function loadConversations() {
   error.value = ''
-  try {
-    await conversationStore.fetchConversations()
-  } catch (e) {
-    error.value = '会話の読み込みに失敗しました。'
-    console.error(e)
+  const maxRetries = 2
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await conversationStore.fetchConversations()
+      return
+    } catch (e) {
+      if (attempt < maxRetries) {
+        // Wait before retrying (handles Lambda cold start)
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+      } else {
+        error.value = '会話の読み込みに失敗しました。'
+        console.error(e)
+      }
+    }
   }
 }
 

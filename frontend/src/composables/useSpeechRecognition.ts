@@ -21,19 +21,22 @@ export function useSpeechRecognition() {
   const muted = ref(false)
 
   let recognition: any = null
+  // True when recognition was killed by the browser while muted
+  // (e.g., iOS kills SpeechRecognition when Audio element plays)
+  let killedWhileMuted = false
 
   const SpeechRecognitionAPI =
     (window as any).SpeechRecognition ||
     (window as any).webkitSpeechRecognition
 
-  if (SpeechRecognitionAPI) {
-    isSupported.value = true
-    recognition = new SpeechRecognitionAPI()
-    recognition.lang = 'ja-JP'
-    recognition.continuous = true
-    recognition.interimResults = true
+  function createRecognition() {
+    if (!SpeechRecognitionAPI) return null
+    const rec = new SpeechRecognitionAPI()
+    rec.lang = 'ja-JP'
+    rec.continuous = true
+    rec.interimResults = true
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    rec.onresult = (event: SpeechRecognitionEvent) => {
       if (muted.value) return
 
       let finalText = ''
@@ -54,20 +57,18 @@ export function useSpeechRecognition() {
       interimTranscript.value = interimText
     }
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    rec.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message)
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         isListening.value = false
       }
     }
 
-    recognition.onend = () => {
-      if (isListening.value) {
-        // Restart if we're still supposed to be listening
-        // (mobile browsers end recognition automatically).
-        // Use a small delay to avoid rapid restart loops.
+    rec.onend = () => {
+      if (isListening.value && !muted.value) {
+        // Restart if we're still supposed to be listening and not muted.
         setTimeout(() => {
-          if (isListening.value) {
+          if (isListening.value && !muted.value) {
             try {
               recognition.start()
             } catch {
@@ -75,16 +76,30 @@ export function useSpeechRecognition() {
             }
           }
         }, 100)
+      } else if (isListening.value && muted.value) {
+        // Recognition was killed while muted (e.g., iOS audio playback
+        // took over the audio session). Mark it so unmute() can recover.
+        killedWhileMuted = true
       }
     }
+
+    return rec
+  }
+
+  if (SpeechRecognitionAPI) {
+    isSupported.value = true
+    recognition = createRecognition()
   }
 
   function start() {
-    if (!recognition || isListening.value) return
+    if (!SpeechRecognitionAPI || isListening.value) return
     transcript.value = ''
     interimTranscript.value = ''
     muted.value = false
+    killedWhileMuted = false
     try {
+      // Always create a fresh instance on explicit start for reliability
+      recognition = createRecognition()
       recognition.start()
       isListening.value = true
     } catch (error) {
@@ -96,6 +111,7 @@ export function useSpeechRecognition() {
     if (!recognition || !isListening.value) return
     isListening.value = false
     muted.value = false
+    killedWhileMuted = false
     interimTranscript.value = ''
     try {
       recognition.stop()
@@ -108,16 +124,45 @@ export function useSpeechRecognition() {
   function mute() {
     if (!recognition) return
     muted.value = true
+    killedWhileMuted = false
     transcript.value = ''
     interimTranscript.value = ''
   }
 
-  /** Resume processing results (resets transcript) */
+  /** Resume processing results and ensure recognition is running */
   function unmute() {
-    if (!recognition) return
+    if (!SpeechRecognitionAPI) return
     muted.value = false
     transcript.value = ''
     interimTranscript.value = ''
+
+    // On iOS, Audio element playback kills the SpeechRecognition session.
+    // When that happens we need to create a fresh instance to recover.
+    if (killedWhileMuted) {
+      killedWhileMuted = false
+      // Small delay lets the audio session fully release on iOS
+      setTimeout(() => {
+        if (!isListening.value && !muted.value) return
+        try {
+          recognition = createRecognition()
+          recognition.start()
+          isListening.value = true
+        } catch (e) {
+          console.error('Failed to restart recognition after iOS audio kill:', e)
+          isListening.value = false
+        }
+      }, 300)
+      return
+    }
+
+    // Normal case: recognition may still be running, just un-mute
+    try {
+      recognition.start()
+      isListening.value = true
+    } catch {
+      // Already running — that's fine, just make sure flag is correct
+      isListening.value = true
+    }
   }
 
   onUnmounted(() => {

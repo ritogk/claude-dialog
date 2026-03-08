@@ -116,7 +116,7 @@ defineExpose({ setText, text })
 
 .input-bar__row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--spacing-sm);
 }
 

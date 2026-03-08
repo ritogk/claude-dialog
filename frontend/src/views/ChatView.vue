@@ -193,7 +193,7 @@ async function handleSend(content: string) {
     messages.value.push(errorMessage)
   }
 
-  // Resume listening if voice mode is still active
+  // Resume listening after TTS finishes (if voice mode is still active)
   if (voiceModeActive.value) {
     resumeListeningAfterTTS()
   }
@@ -201,8 +201,9 @@ async function handleSend(content: string) {
 
 function resumeListeningAfterTTS() {
   if (!voiceModeActive.value) return
-  // Unmute recognition to resume capturing speech
-  // (mic session stays alive, no new permission popup)
+  // Unmute immediately so the user can interrupt TTS by speaking.
+  // AudioContext playback doesn't kill SpeechRecognition, so this is safe.
+  // The watch handler below will stop TTS when speech is detected.
   speechRecognition.unmute()
 }
 
