@@ -115,13 +115,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useConversationStore } from '../stores/conversation'
 import AppHeader from '../components/AppHeader.vue'
 import ConversationListItem from '../components/ConversationListItem.vue'
 import SettingsDrawer from '../components/SettingsDrawer.vue'
 
 const router = useRouter()
+const route = useRoute()
 const conversationStore = useConversationStore()
 
 const settingsOpen = ref(false)
@@ -184,7 +185,11 @@ async function confirmDelete() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (route.query.new === 'true') {
+    await createConversation()
+    return
+  }
   loadConversations()
 })
 </script>
